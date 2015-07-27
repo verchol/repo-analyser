@@ -4,12 +4,17 @@ var fs    = require('fs');
 var path  = require('path');
 var EventEmitter =   require('events').EventEmitter;
 var util         =   require('util');
+var _            =   require('lodash');
 
 var runner = function (folder){
   EventEmitter.call(this);
   if(!fs.existsSync(folder)) throw 'folder does not exists';
   this.rules = [];
   this.folder = folder;
+  this.stack = [];
+  this.supported = ['js', 'cs', 'java', 'php'];
+  this.dockerfiles = [];
+  this.use(metaData);
 };
 util.inherits(runner, EventEmitter);
 runner.prototype.use = function(rule)
@@ -29,41 +34,58 @@ runner.prototype.start = function(){
 });
 };
 
-var r = new runner(path.resolve('../'));
-r.use(function(folder, output, callback){
+
+runner.prototype.done = function(callback)
+{
+  this.on('done', callback);
+};
+
+function rule(folder, output, callback){
     output.rule1 = 'ok';
     callback(null, true);
-});
+}
 
-r.use(function(folder, output, callback){
+function gitInfo(folder, output, callback){
     output.rule2 = 'ok';
     callback(null, true);
-});
+}
 
-r.use(function(folder, output ,callback){
+function metaData(folder, output ,next){
   var filewalker = require('filewalker');
   var emitter = this;
   filewalker(folder)
     .on('dir', function(p) {
-      console.log('dir:  %s', p);
+      //console.log('dir:  %s', p);
     })
     .on('file', function(p, s) {
      var data = path.parse(p);
+
+    if (data.base.toLowerCase().indexOf("dockerfile") !== -1){
+      console.log('dockefile was detected:' + p);
+      emitter.dockerfiles.push(data);
+      return emitter.emit('docker', p);
+    }
      if (data.base === 'package.json')
-        emitter.emit('package.json', p);
+
+        return emitter.emit('nodejs', p);
     //  console.log('file: %s, %d bytes', data.base, s.size);
-    })
-    .on('error', function(err) {
+     var ext = data.ext.slice(- (data.ext.length - 1));
+
+        if (_.indexOf(emitter.stack, ext) === -1 && _.indexOf(emitter.supported, ext)!== -1){
+          console.log('stack found ' + ext);
+          emitter.stack.push(ext);
+          emitter.emit('stack', ext);
+        }
+
+
+    }).on('error', function(err) {
       console.error(err);
     })
     .on('done', function() {
-
-      console.log('%d dirs, %d files, %d bytes', this.dirs, this.files, this.bytes);
-      callback();
+      emitter.emit('done', null, emitter.stack);
+      next();
     })
   .walk();
-});
-r.on('package.json', function(p){
-  console.log('package found ' + p);
-})
-r.start();
+}
+
+module.exports = runner;
