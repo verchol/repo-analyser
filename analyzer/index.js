@@ -5,10 +5,12 @@ var path  = require('path');
 var EventEmitter =   require('events').EventEmitter;
 var util         =   require('util');
 var _            =   require('lodash');
+var Q            =   require('q');
+var git          =   require('gift');
 
 var runner = function (folder){
   EventEmitter.call(this);
-  if(!fs.existsSync(folder)) throw 'folder does not exists';
+  if(!fs.existsSync(folder)) console.warn('folder does not exists');
   this.rules = [];
   this.folder = folder;
   this.stack = [];
@@ -16,7 +18,29 @@ var runner = function (folder){
   this.dockerfiles = [];
   this.use(metaData);
 };
+
 util.inherits(runner, EventEmitter);
+runner.prototype.cloneFromGit = function(repoUrl , targetFolder){
+  var defer = Q.defer();
+  var self = this;
+  /*if (fs.existsSync(targetFolder)){
+        var p = defer.promise;
+        defer.reject('folder' + targetFolder +  'already exists');
+        return Q.when(p);
+  }*/
+
+  git.clone(repoUrl, targetFolder, function (err, _repo){
+  console.log('repo created');
+  if (err)
+     defer.reject(err);
+   else{
+     defer.resolve(_repo);
+     self.folder = targetFolder;
+  }
+});
+
+  return defer.promise;
+};
 runner.prototype.use = function(rule)
 {
   console.log('rule added');
@@ -26,18 +50,22 @@ runner.prototype.use = function(rule)
 runner.prototype.start = function(){
   this.context = {};
   var self = this;
+  var defer = Q.defer();
+  this.handle = defer;
   async.eachSeries(this.rules, function iterator(rule, callback) {
       rule.call(self, self.folder, self.context, callback);
 }, function done() {
     console.log('all rules completed');
     console.log(JSON.stringify(self));
 });
+
+ return defer.promise;
 };
 
 
 runner.prototype.done = function(callback)
 {
-  this.on('done', callback);
+    this.on('done', callback);
 };
 
 function rule(folder, output, callback){
@@ -59,8 +87,8 @@ function metaData(folder, output ,next){
     })
     .on('file', function(p, s) {
      var data = path.parse(p);
-
-    if (data.base.toLowerCase().indexOf("dockerfile") !== -1){
+     emitter.handle.notify(p);
+    if ((data.base.toLowerCase().indexOf("dockerfile") !== -1) || (data.base.toLowerCase().indexOf("docker-compose") !== -1)){
       console.log('dockefile was detected:' + p);
       emitter.dockerfiles.push(data);
       return emitter.emit('docker', p);
