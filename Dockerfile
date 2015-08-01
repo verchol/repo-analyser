@@ -6,6 +6,4 @@ WORKDIR /src
 RUN npm install
 
 COPY ./  /src
-
-
-CMD ["node", "/src/analyzer/index"]
+CMD node /src/bin/www

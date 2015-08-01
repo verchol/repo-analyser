@@ -40,8 +40,8 @@ describe.only('check Runner ', function(){
      });
 
     });
-return;
-  it('just git clone', function(done){
+
+  it.skip('just git clone', function(done){
     this.timeout(20000);
     var repoUrl = "https://github.com/Codefresh-Examples/lets-chat.git";
     var localDir = path.resolve(__dirname, "./test/repo");
@@ -54,7 +54,8 @@ return;
 
 
 
-  it('Runner->cloneFromGit', function(done){
+
+  it.skip('Runner->cloneFromGit', function(done){
     this.timeout(20000);
     var Runner = require('./');
     var path = require('path');
@@ -77,7 +78,7 @@ return;
 
   });
 });
-return;
+
 describe('analyzier tests', function(){
 
   var Runner = require('./');
@@ -189,6 +190,34 @@ it('using git clone [node]' , function(done){
        r.done(function(err, data){
          done(err);});
      });
+ });
+
+ it('test package json', function(done){
+   console.log('git clone use case');
+
+   var repoUrl = "https://github.com/codefresh-io/codefresh-io.git";
+   var git = require('gift');
+   var localDir = path.resolve(__dirname, "./test/repo");
+   this.timeout(2000000);
+
+   console.log('clonning repo to ' + localDir);
+   git.clone(repoUrl, localDir, function (err, _repo){
+   console.log('repo created');
+
+    if (err)
+      done(err);
+
+    var r = new Runner(localDir);
+    r.on('docker:dockefiles', function(p){
+       console.log('docker file was detected:' + p);
+     });
+     r.start();
+     r.on('packageJson', function(data){
+       console.log('package json found :'  + data);
+     });
+     r.done(function(err, data){
+       done(err);});
+   });
  });
  it.only('using git clone php' , function(done){
       console.log('git clone use case');
