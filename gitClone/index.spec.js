@@ -11,7 +11,8 @@ var repos = [
   "https://github.com/Codefresh-Examples/jsbeautify.git",
   "https://github.com/Codefresh-Examples/express-angular.git",
   "https://github.com/zwij/wap_zaverecna.git",
-  "https://github.com/yaronr/dockerfile.git"
+  "https://github.com/yaronr/dockerfile.git",
+  "https://github.com/codefresh-io/spigo.git"
 ];
 var docker = 5;
 var js = 1;
@@ -50,6 +51,73 @@ it('just git clone', function(done){
       function(err){
         done(err);});
 });
+it('run on spigo repo' , function(done){
+  this.timeout(10000);
+
+  index = 0;
+  var promises = [];
+  var Runner = require('../analyzer');
+  assert(Runner);
+
+  var localDir = path.resolve(__dirname, "./test/repo", index.toString());
+
+  var r = new Runner(localDir);
+  var p = r.start();
+  r.on('packageJson', function(data){
+    console.log('package json found :'  + data);
+  });
+
+});
+
+it('using git clone [node]' , function(done){
+     console.log('git clone use case');
+
+     var repoUrl = "https://github.com/codefresh-io/codefresh-io.git";
+     var git = require('gift');
+     var localDir = path.resolve(__dirname, "./test/repo");
+     this.timeout(2000000);
+
+     console.log('clonning repo to ' + localDir);
+     git.clone(repoUrl, localDir, function (err, _repo){
+     console.log('repo created');
+
+      if (err)
+        done(err);
+
+      var r = new Runner(localDir);
+      r.on('docker:dockefiles', function(p){
+         console.log('docker file was detected:' + p);
+       });
+       r.start();
+       r.done(function(err, data){
+         done(err);});
+     });
+ });
+
+ it.only('using git clone php' , function(done){
+      console.log('git clone use case');
+
+      var repoUrl = "https://github.com/zwij/wap_zaverecna.git";
+      var git = require('gift');
+      var localDir = path.resolve(__dirname, "./test/repo");
+      this.timeout(2000000);
+
+      console.log('clonning repo to ' + localDir);
+      git.clone(repoUrl, localDir, function (err, _repo){
+      console.log('repo created');
+
+       if (err)
+         done(err);
+
+       var r = new Runner(localDir);
+       r.on('docker:dockefiles', function(p){
+          console.log('docker file was detected:' + p);
+        });
+        r.start();
+        r.done(function(err, data){
+          done(err);});
+      });
+  });
 
 it('run on multiple repos' , function(done){
   this.timeout(10000);
@@ -62,9 +130,11 @@ it('run on multiple repos' , function(done){
   index++;
   var defer = Q.defer();
   var localDir = path.resolve(__dirname, "./test/repo", index.toString());
+  done();
   var r = new Runner(localDir);
   var p = r.start();
   r.on('packageJson', function(data){
+    console.log('repo name is :' + r);
     console.log('package json found :'  + data);
   });
   promises.push(p);

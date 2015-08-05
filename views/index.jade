@@ -2,4 +2,14 @@ extends layout
 
 block content
   h1= title
-  p Welcome to #{title}
+  p Put repo
+  form#clone(name="clone", action="/git/clone", method="post")
+        p Repo
+        input(type="text", name="repoName")
+        input(type="text", name="gitUrl", style="width: 50%")
+        input(type="submit", value="Clone")
+
+
+  button#parse "Parse Repo"
+  p "Repo Data"
+  p#repodata

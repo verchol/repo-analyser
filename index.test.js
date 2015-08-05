@@ -94,7 +94,7 @@ beforeEach(function(done){
 });
 
 it('using git clone [node]' , function(done){
-     console.log('git clone use case');
+     console.log('using git clone [node]');
 
      var repoUrl = "https://github.com/codefresh-io/codefresh-io.git";
      var git = require('gift');
@@ -118,7 +118,7 @@ it('using git clone [node]' , function(done){
      });
  });
  it.only('using git clone php' , function(done){
-      console.log('git clone use case');
+      console.log('using git clone php');
 
       var repoUrl = "https://github.com/zwij/wap_zaverecna.git";
       var git = require('gift');
@@ -142,7 +142,7 @@ it('using git clone [node]' , function(done){
       });
   });
   it.only('using git clone multiple docker files' , function(done){
-       console.log('git clone use case');
+       console.log('using git clone multiple docker files');
 
        var repoUrl = "https://github.com/zwij/wap_zaverecna.git";
        var git = require('gift');

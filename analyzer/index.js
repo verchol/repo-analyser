@@ -18,6 +18,7 @@ var runner = function (folder){
   this.supported = ['js', 'cs', 'java', 'php'];
   this.dockerfiles = [];
   this.gruntfiles = [];
+  this.packageJson = [];
   this.use(metaData);
 };
 
@@ -65,7 +66,7 @@ runner.prototype.start = function(){
     if (err)
     return defer.reject(err);
 
-    var ret  = [self.dockerfiles, self.stack, self.gruntfiles];
+    var ret  = [self.dockerfiles, self.stack, self.gruntfiles, self.packageJson];
 
     defer.resolve(ret);
 
@@ -119,6 +120,7 @@ function metaData(folder, output ,next){
       return emitter.emit('docker', data);
     }
      if (data.base === 'package.json'){
+         emitter.packageJson.push(p);
         parsePackage(path.resolve(folder, p)).then(function(data){emitter.emit('packageJson', data)}, function(err){
           emitter.emit('error:', err);
         });
@@ -126,7 +128,7 @@ function metaData(folder, output ,next){
       }
 
       if (data.base.toLowerCase().indexOf("gruntfile") !== -1){
-        console.log('dockefile was detected:' + p);
+        console.log('gruntfile was detected:' + p);
         emitter.gruntfiles.push(p);
         return emitter.emit('gruntfile', p);
       }
