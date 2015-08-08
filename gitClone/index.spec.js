@@ -94,8 +94,10 @@ it('using git clone [node]' , function(done){
      });
  });
 
- it.only('using git clone php' , function(done){
+ it('using git clone php' , function(done){
       console.log('git clone use case');
+      var Runner = require('../analyzer');
+      assert(Runner);
 
       var repoUrl = "https://github.com/zwij/wap_zaverecna.git";
       var git = require('gift');
