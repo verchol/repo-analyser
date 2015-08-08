@@ -16,6 +16,8 @@ var repos = [
 ];
 var docker = 5;
 var js = 1;
+var testFolder = process.env.TEST_FOLDER || './test/repo';
+
 function only(index)
 {
   repos = repos.slice(index, index + 1);
@@ -33,7 +35,7 @@ it('just git clone', function(done){
       console.log('cloing repo :' + JSON.stringify(repo));
       index++;
       var defer = Q.defer();
-      var localDir = path.resolve(__dirname, "./test/repo", index.toString());
+      var localDir = path.resolve(__dirname, testFolder, index.toString());
       console.log('local folder:' + localDir);
       git.clone(repo, localDir, function (err, _repo){
       console.log('repo created err:' + err);
@@ -59,7 +61,7 @@ it('run on spigo repo' , function(done){
   var Runner = require('../analyzer');
   assert(Runner);
 
-  var localDir = path.resolve(__dirname, "./test/repo", index.toString());
+  var localDir = path.resolve(__dirname, testFolder, index.toString());
 
   var r = new Runner(localDir);
   var p = r.start();
@@ -74,7 +76,7 @@ it('using git clone [node]' , function(done){
 
      var repoUrl = "https://github.com/codefresh-io/codefresh-io.git";
      var git = require('gift');
-     var localDir = path.resolve(__dirname, "./test/repo");
+     var localDir = path.resolve(__dirname, testFolder);
      this.timeout(2000000);
 
      console.log('clonning repo to ' + localDir);
@@ -101,7 +103,7 @@ it('using git clone [node]' , function(done){
 
       var repoUrl = "https://github.com/zwij/wap_zaverecna.git";
       var git = require('gift');
-      var localDir = path.resolve(__dirname, "./test/repo");
+      var localDir = path.resolve(__dirname, testFolder);
       this.timeout(2000000);
 
       console.log('clonning repo to ' + localDir);
@@ -131,7 +133,7 @@ it('run on multiple repos' , function(done){
   _.forEach(repos, function(r){
   index++;
   var defer = Q.defer();
-  var localDir = path.resolve(__dirname, "./test/repo", index.toString());
+  var localDir = path.resolve(__dirname, testFolder, index.toString());
   done();
   var r = new Runner(localDir);
   var p = r.start();
