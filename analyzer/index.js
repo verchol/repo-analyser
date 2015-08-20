@@ -23,27 +23,6 @@ var runner = function (folder){
 };
 
 util.inherits(runner, EventEmitter);
-runner.prototype.cloneFromGit = function(repoUrl , targetFolder){
-    var defer = Q.defer();
-    var self = this;
-  /*if (fs.existsSync(targetFolder)){
-        var p = defer.promise;
-        defer.reject('folder' + targetFolder +  'already exists');
-        return Q.when(p);
-  }*/
-
-    git.clone(repoUrl, targetFolder, function (err, _repo){
-        console.log('repo created');
-        if (err)
-            defer.reject(err);
-        else{
-            defer.resolve(_repo);
-            self.folder = targetFolder;
-        }
-    });
-
-    return defer.promise;
-};
 runner.prototype.use = function(rule)
 {
     console.log('rule added');
@@ -115,7 +94,6 @@ function metaData(folder, output ,next){
         emitter.handle.notify(p);
 
         if ((data.base.toLowerCase().indexOf("dockerfile") !== -1) || (data.base.toLowerCase().indexOf("docker-compose") !== -1)){
-            console.log('dockefile was detected:' + p);
             emitter.dockerfiles.push(p);
             return emitter.emit('docker', data);
         }

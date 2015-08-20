@@ -1,67 +1,71 @@
 
-describe ('git test', function(){
+describe ('repo analyzer', function(){
     var git     = require('gift');
     var  _      = require('lodash');
     var  Q      = require('q');
+    var fs      = require('fs');
     var path    = require('path');
     var assert  = require('assert');
-    var repos = [
-        "https://github.com/Codefresh-Examples/lets-chat.git",
-        "https://github.com/Codefresh-Examples/socket-io.git",
-        "https://github.com/Codefresh-Examples/jsbeautify.git",
-        "https://github.com/Codefresh-Examples/express-angular.git",
-        "https://github.com/zwij/wap_zaverecna.git",
-        "https://github.com/yaronr/dockerfile.git",
-        "https://github.com/codefresh-io/spigo.git"
-    ];
-    var docker = 5;
-    var js = 1;
+    var repos = {
+        0: ["github.com", "Codefresh-Examples/lets-chat.git"],
+        "js": ["github.com", "Codefresh-Examples/socket-io.git"],
+        2: ["github.com", "Codefresh-Examples/jsbeautify.git"],
+        3: ["github.com", "Codefresh-Examples/express-angular.git"],
+        "php": ["github.com", "zwij/wap_zaverecna.git"],
+        "docker": ["github.com", "yaronr/dockerfile.git"],
+        6: ["github.com", "codefresh-io/spigo.git"],
+        "node": ["github.com", "codefresh-io/codefresh-io.git"]
+    };
     var testFolder = process.env.TEST_FOLDER || './test/repo';
 
-    function only(index)
-    {
-        repos = repos.slice(index, index + 1);
+    cloneFromGit = function(repoUrl , targetFolder){
+        console.log('cloning repo ' + JSON.stringify(repoUrl) + ' to local folder: "' + targetFolder + '"');
+        return Q.nfcall(git.clone, "https://"+ repoUrl[0] +"/"+ repoUrl[1], targetFolder).then(function(res) { console.log("cloned");});
+        //return Q.nfcall(git.clone, "git@"+ repoUrl[0] +":"+ repoUrl[1], targetFolder);
+    };
+
+    function getRepoDirByKey(key) {
+        return path.resolve(__dirname, testFolder, key.toString());
     }
-    it.skip('set docker repo' , function(){
-        only(js);
-        console.log(JSON.stringify(docker));
-    });
 
-    it('just git clone', function(done){
-        this.timeout(20000);
-        var index = 0;
-        var promises =  _.map(repos, function(repo){
+    this.timeout(20000);
+    before(function(done){
+        var localDir = getRepoDirByKey("");
+        var q = Q;
+        if (fs.existsSync(localDir)){
+            console.log('removing folder from previous run');
+            var rmdir = require('rmdir');
 
-            console.log('cloing repo :' + JSON.stringify(repo));
-            index++;
-            var defer = Q.defer();
-            var localDir = path.resolve(__dirname, testFolder, index.toString());
-            console.log('local folder:' + localDir);
-            git.clone(repo, localDir, function (err, _repo){
-                console.log('repo created err:' + err);
-
-                if (err) return defer.reject(err);
-                defer.resolve(_repo);
+            q = Q.nfcall(rmdir, localDir).then(function(){
+                console.log( 'all files were removed' );
             });
+        }
+        else {
+            q = Q("");
+        }
 
-            return defer.promise;
+        var promises =  _.map(repos, function(repo, key){
+            return q.then(function(res) {
+                return cloneFromGit(repo, getRepoDirByKey(key));
+            });
         });
 
-        Q.all(promises).then(function(result){
+        return Q.all(promises).done(function(result){
             console.log('cloned with result : ' + JSON.stringify(result));
-            done();},
-            function(err){
-                done(err);});
+            done();
+        });/*,
+        function(err){
+            console.log('failed with err : ' + JSON.stringify(err));
+            done(err);
+        });*/
     });
-    it('run on spigo repo' , function(done){
-        this.timeout(10000);
-
-        index = 0;
+    it.skip('run on spigo repo' , function(done){
+        index = 1;
         var promises = [];
         var Runner = require('../analyzer');
         assert(Runner);
 
-        var localDir = path.resolve(__dirname, testFolder, index.toString());
+        var localDir = getRepoDirByKey(index);
 
         var r = new Runner(localDir);
         var p = r.start();
@@ -71,71 +75,37 @@ describe ('git test', function(){
 
     });
 
-    it('using git clone [node]' , function(done){
-        console.log('git clone use case');
-
-        var repoUrl = "https://github.com/codefresh-io/codefresh-io.git";
-        var git = require('gift');
-        var localDir = path.resolve(__dirname, testFolder);
-        this.timeout(2000000);
-
-        console.log('clonning repo to ' + localDir);
-        git.clone(repoUrl, localDir, function (err, _repo){
-            console.log('repo created');
-
-            if (err)
-                done(err);
-
-            var r = new Runner(localDir);
-            r.on('docker:dockefiles', function(p){
-                console.log('docker file was detected:' + p);
-            });
-            r.start();
-            r.done(function(err, data){
-                done(err);});
+    it.skip('using  [node]' , function(done){
+        var r = new Runner(getRepoDirByKey("node"));
+        r.on('docker:dockefiles', function(p){
+            console.log('docker file was detected:' + p);
         });
+        r.start();
+        r.done(function(err, data){
+            done(err);});
     });
 
-    it('using git clone php' , function(done){
-        console.log('git clone use case');
+    it.skip('using php' , function(done){
         var Runner = require('../analyzer');
         assert(Runner);
 
-        var repoUrl = "https://github.com/zwij/wap_zaverecna.git";
-        var git = require('gift');
-        var localDir = path.resolve(__dirname, testFolder);
-        this.timeout(2000000);
+        var localDir = getRepoDirByKey("php");
 
-        console.log('clonning repo to ' + localDir);
-        git.clone(repoUrl, localDir, function (err, _repo){
-            console.log('repo created');
-
-            if (err)
-                done(err);
-
-            var r = new Runner(localDir);
-            r.on('docker:dockefiles', function(p){
-                console.log('docker file was detected:' + p);
-            });
-            r.start();
-            r.done(function(err, data){
-                done(err);});
+        var r = new Runner(localDir);
+        r.on('docker:dockefiles', function(p){
+            console.log('docker file was detected:' + p);
         });
+        r.start();
+        r.done(function(err, data){
+            done(err);});
     });
 
     it('run on multiple repos' , function(done){
-        this.timeout(10000);
-
-        index = 0;
         var promises = [];
         var Runner = require('../analyzer');
         assert(Runner);
-        _.forEach(repos, function(r){
-            index++;
-            var defer = Q.defer();
-            var localDir = path.resolve(__dirname, testFolder, index.toString());
-            done();
-            var r = new Runner(localDir);
+        _.forEach(repos, function(repo, key){
+            var r = new Runner(getRepoDirByKey(key));
             var p = r.start();
             r.on('packageJson', function(data){
                 console.log('repo name is :' + r);
@@ -144,15 +114,40 @@ describe ('git test', function(){
             promises.push(p);
         });
 
-
         Q.all(promises).then(function(result){
             _.forEach(result, function(r){
-                console.log('cloned with result : ' + JSON.stringify(r));
+                console.log('run with result : ' + JSON.stringify(r));
             });
 
-            done();},
-            function(err){
-                done(err);});
+            done();
+        },
+        done);
 
     });
+    it('finds dockerfiles', function(done){
+        var Runner = require('../analyzer');
+        assert(Runner);
+        var localDir = getRepoDirByKey('docker');
+
+        var r = new Runner(localDir);
+        var p = r.start();
+        r.done(function () {
+            assert.notStrictEqual(_.indexOf(r.dockerfiles, 'awscli/Dockerfile'), -1)
+            assert.notStrictEqual(_.indexOf(r.dockerfiles, 'mesos/Dockerfile'), -1)
+            done();
+        });
+
+        r.on('docker', function(data){
+            var index = _.indexOf(r.dockerfiles, 'awscli/Dockerfile');
+            if (index != -1 && index == r.dockerfiles.length-1) {
+                assert.equal(data.dir, 'awscli');
+            }
+
+            index = _.indexOf(r.dockerfiles, 'mesos/Dockerfile');
+            if (index != -1 && index == r.dockerfiles.length-1) {
+                assert.equal(data.dir, 'mesos');
+            }
+        });
+    });
+
 });
