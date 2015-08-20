@@ -8,20 +8,25 @@ describe ('repo analyzer', function(){
     var assert  = require('assert');
     var repos = {
         0: ["github.com", "Codefresh-Examples/lets-chat.git"],
-        "js": ["github.com", "Codefresh-Examples/socket-io.git"],
         2: ["github.com", "Codefresh-Examples/jsbeautify.git"],
-        3: ["github.com", "Codefresh-Examples/express-angular.git"],
+        "socketio": ["github.com", "Codefresh-Examples/socket-io.git"],
+        "express": ["github.com", "Codefresh-Examples/express-angular.git"],
         "php": ["github.com", "zwij/wap_zaverecna.git"],
         "docker": ["github.com", "yaronr/dockerfile.git"],
         6: ["github.com", "codefresh-io/spigo.git"],
         "node": ["github.com", "codefresh-io/codefresh-io.git"]
     };
     var testFolder = process.env.TEST_FOLDER || './test/repo';
+    Q.longStackSupport = true;
 
     cloneFromGit = function(repoUrl , targetFolder){
         console.log('cloning repo ' + JSON.stringify(repoUrl) + ' to local folder: "' + targetFolder + '"');
-        return Q.nfcall(git.clone, "https://"+ repoUrl[0] +"/"+ repoUrl[1], targetFolder).then(function(res) { console.log("cloned");});
-        //return Q.nfcall(git.clone, "git@"+ repoUrl[0] +":"+ repoUrl[1], targetFolder);
+        //return Q.nfcall(git.clone, "git@"+ repoUrl[0] +":"+ repoUrl[1], targetFolder).
+        return Q.nfcall(git.clone, "https://"+ repoUrl[0] +"/"+ repoUrl[1], targetFolder).
+            then(function(res) {
+                console.log('cloned into "' + res.path + '"');
+                return res
+            });
     };
 
     function getRepoDirByKey(key) {
@@ -29,6 +34,9 @@ describe ('repo analyzer', function(){
     }
 
     this.timeout(20000);
+
+    var Runner = require('../analyzer');
+
     before(function(done){
         var localDir = getRepoDirByKey("");
         var q = Q;
@@ -50,8 +58,7 @@ describe ('repo analyzer', function(){
             });
         });
 
-        return Q.all(promises).done(function(result){
-            console.log('cloned with result : ' + JSON.stringify(result));
+        Q.all(promises).done(function(result){
             done();
         });/*,
         function(err){
@@ -59,74 +66,21 @@ describe ('repo analyzer', function(){
             done(err);
         });*/
     });
-    it.skip('run on spigo repo' , function(done){
-        index = 1;
-        var promises = [];
-        var Runner = require('../analyzer');
-        assert(Runner);
-
-        var localDir = getRepoDirByKey(index);
-
-        var r = new Runner(localDir);
-        var p = r.start();
-        r.on('packageJson', function(data){
-            console.log('package json found :'  + data);
-        });
-
-    });
-
-    it.skip('using  [node]' , function(done){
-        var r = new Runner(getRepoDirByKey("node"));
-        r.on('docker:dockefiles', function(p){
-            console.log('docker file was detected:' + p);
-        });
-        r.start();
-        r.done(function(err, data){
-            done(err);});
-    });
-
-    it.skip('using php' , function(done){
-        var Runner = require('../analyzer');
-        assert(Runner);
-
-        var localDir = getRepoDirByKey("php");
-
-        var r = new Runner(localDir);
-        r.on('docker:dockefiles', function(p){
-            console.log('docker file was detected:' + p);
-        });
-        r.start();
-        r.done(function(err, data){
-            done(err);});
-    });
 
     it('run on multiple repos' , function(done){
         var promises = [];
-        var Runner = require('../analyzer');
         assert(Runner);
         _.forEach(repos, function(repo, key){
             var r = new Runner(getRepoDirByKey(key));
             var p = r.start();
-            r.on('packageJson', function(data){
-                console.log('repo name is :' + r);
-                console.log('package json found :'  + data);
-            });
             promises.push(p);
         });
 
-        Q.all(promises).then(function(result){
-            _.forEach(result, function(r){
-                console.log('run with result : ' + JSON.stringify(r));
-            });
-
+        Q.all(promises).done(function(result){
             done();
-        },
-        done);
-
+        });
     });
     it('finds dockerfiles', function(done){
-        var Runner = require('../analyzer');
-        assert(Runner);
         var localDir = getRepoDirByKey('docker');
 
         var r = new Runner(localDir);
@@ -149,5 +103,60 @@ describe ('repo analyzer', function(){
             }
         });
     });
+    it('finds package.json [express sample]', function(done){
+        var localDir = getRepoDirByKey('express');
+
+        var r = new Runner(localDir);
+        var p = r.start();
+        r.done(function () {
+            assert.notStrictEqual(_.indexOf(r.packageJson, 'package.json'), -1)
+        });
+
+        r.on('packageJson', function(data){
+            index = _.indexOf(r.packageJson, 'package.json');
+            if (index != -1 && index == r.packageJson.length-1) {
+                assert.equal(data.scripts.start, 'node app.js');
+                done()
+            }
+        });
+    });
+    it('finds package.json [socketio sample]', function(done){
+        var localDir = getRepoDirByKey('socketio');
+
+        var r = new Runner(localDir);
+        var p = r.start();
+        r.done(function () {
+            assert.notStrictEqual(_.indexOf(r.packageJson, 'package.json'), -1)
+            done();
+        });
+
+        r.on('packageJson', function(data){
+            index = _.indexOf(r.packageJson, 'package.json');
+            if (index != -1 && index == r.packageJson.length-1) {
+                assert.equal(data.scripts.start, 'node app.js');
+            }
+        });
+    });
+    it('finds stack js', function(done) {
+        var localDir = getRepoDirByKey('express');
+
+        var r = new Runner(localDir);
+        var p = r.start();
+        r.done(function () {
+            assert.notStrictEqual(_.indexOf(r.stack, 'js'), -1)
+            done();
+        });
+    });
+    it('finds stack php', function(done) {
+        var localDir = getRepoDirByKey('php');
+
+        var r = new Runner(localDir);
+        var p = r.start();
+        r.done(function () {
+            assert.notStrictEqual(_.indexOf(r.stack, 'php'), -1)
+            done();
+        });
+    });
+
 
 });

@@ -19,13 +19,12 @@ var runner = function (folder){
     this.dockerfiles = [];
     this.gruntfiles = [];
     this.packageJson = [];
-    this.use(metaData);
+    this.addRule(metaData);
 };
 
 util.inherits(runner, EventEmitter);
-runner.prototype.use = function(rule)
+runner.prototype.addRule = function(rule)
 {
-    console.log('rule added');
     this.rules.push(rule);
 };
 
@@ -37,9 +36,6 @@ runner.prototype.start = function(){
     async.eachSeries(this.rules, function iterator(rule, callback) {
         rule.call(self, self.folder, self.context, callback);
     }, function done(err, result) {
-
-
-        console.log('--------------------------------------');
         (err) ? console.log('!!!err:' + err)  : "";
 
         if (err)
@@ -48,8 +44,6 @@ runner.prototype.start = function(){
         var ret  = [self.dockerfiles, self.stack, self.gruntfiles, self.packageJson];
 
         defer.resolve(ret);
-
-        console.log('--------------------------------------');
     });
 
     return defer.promise;
@@ -57,7 +51,6 @@ runner.prototype.start = function(){
 
 var parsePackage = function(data){
     var t = JSON.parse(fs.readFileSync(data));
-    console.log("package.json:" + JSON.stringify(t.scripts));
 
     function delay(ms) {
         var deferred = Q.defer();
@@ -99,8 +92,8 @@ function metaData(folder, output ,next){
         }
         if (data.base === 'package.json'){
             emitter.packageJson.push(p);
-            parsePackage(path.resolve(folder, p)).then(function(data){emitter.emit('packageJson', data)}, function(err){
-                emitter.emit('error:', err);
+            parsePackage(path.resolve(folder, p)).done(function(data){emitter.emit('packageJson', data)}, function(err){
+                emitter.emit('error', err);
             });
             //emitter.emit('nodejs', p);
         }
@@ -113,13 +106,13 @@ function metaData(folder, output ,next){
         //  console.log('file: %s, %d bytes', data.base, s.size);
         var ext = data.ext.slice(- (data.ext.length - 1));
         if (_.indexOf(emitter.stack, ext) === -1 && _.indexOf(emitter.supported, ext)!== -1){
-            console.log('stack found ' + ext);
             emitter.stack.push(ext);
             emitter.emit('stack', ext);
         }
 
     }).on('error', function(err) {
         console.error(err);
+        emitter.emit('error', err);
     })
     .on('done', function() {
         emitter.emit('done', null, emitter.stack);
