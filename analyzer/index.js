@@ -49,14 +49,7 @@ runner.prototype.start = function(){
 };
 
 var parsePackage = function(data){
-    var t = JSON.parse(fs.readFileSync(data));
-
-    function delay(ms) {
-        var deferred = Q.defer();
-        setTimeout(deferred.resolve, ms);
-        return deferred.promise;
-    }
-    return delay(2000);
+    return Q.nfcall(fs.readFile, data).then(JSON.parse) ;
 };
 
 runner.prototype.done = function(callback)
