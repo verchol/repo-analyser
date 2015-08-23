@@ -31,22 +31,21 @@ runner.prototype.addRule = function(rule)
 runner.prototype.start = function(){
     this.context = {};
     var self = this;
-    var defer = Q.defer();
-    this.handle = defer;
-    async.eachSeries(this.rules, function iterator(rule, callback) {
-        rule.call(self, self.folder, self.context, callback);
-    }, function done(err, result) {
-        (err) ? console.log('!!!err:' + err)  : "";
+    //this.handle = defer;
 
-        if (err)
-            return defer.reject(err);
-
-        var ret  = [self.dockerfiles, self.stack, self.gruntfiles, self.packageJson];
-
-        defer.resolve(ret);
-    });
-
-    return defer.promise;
+    // 'error' event may be triggered by user generated content (e.g. user's bad
+    // code) and we need to decide how to handle that.
+    // The other problem with the event is that it may be triggred, but also
+    // might not.
+    var onerror = Q.ninvoke(self, 'on', 'error');
+    return Q.nfcall(async.eachSeries, this.rules, function iterator(rule, done) {
+            try {
+                rule.call(self, self.folder, self.context);
+                done();
+            } catch (e) {
+                done(e)
+            }
+        }).thenResolve([self.dockerfiles, self.stack, self.gruntfiles, self.packageJson]);
 };
 
 var parsePackage = function(data){
@@ -65,17 +64,15 @@ runner.prototype.done = function(callback)
     this.on('done', callback);
 };
 
-function rule(folder, output, callback){
+function rule(folder, output){
     output.rule1 = 'ok';
-    callback(null, true);
 }
 
-function gitInfo(folder, output, callback){
+function gitInfo(folder, output){
     output.rule2 = 'ok';
-    callback(null, true);
 }
 
-function metaData(folder, output ,next){
+function metaData(folder, output){
 
     var emitter = this;
     filewalker(folder)
@@ -84,7 +81,7 @@ function metaData(folder, output ,next){
     })
     .on('file', function(p, s) {
         var data = path.parse(p);
-        emitter.handle.notify(p);
+        //emitter.handle.notify(p);
 
         if ((data.base.toLowerCase().indexOf("dockerfile") !== -1) || (data.base.toLowerCase().indexOf("docker-compose") !== -1)){
             emitter.dockerfiles.push(p);
@@ -116,7 +113,6 @@ function metaData(folder, output ,next){
     })
     .on('done', function() {
         emitter.emit('done', null, emitter.stack);
-        next();
     })
     .walk();
 }

@@ -157,6 +157,32 @@ describe ('repo analyzer', function(){
             done();
         });
     });
+    it('handles an exception in a rule', function(done) {
+        var localDir = getRepoDirByKey('express');
 
+        var r = new Runner(localDir);
+        r.addRule(function(folder, context) {
+            throw new Error('test error');
+        });
+        var p = r.start();
+        p.done(undefined, function (err) {
+            assert(err instanceof Error);
+            assert.equal(err.message, 'test error');
+            done();
+        });
+    });
+    it('handles an "error" event in a rule', function(done) {
+        var localDir = getRepoDirByKey('express');
+
+        var r = new Runner(localDir);
+        r.addRule(function(folder, context) {
+            r.emit('error', 'test error');
+        });
+        var p = r.start();
+        p.done(undefined, function (err) {
+            assert.equal(err, 'test error');
+            done();
+        });
+    });
 
 });
