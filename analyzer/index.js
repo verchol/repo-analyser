@@ -34,12 +34,23 @@ runner.prototype.start = function(){
     var self = this;
     //this.handle = defer;
 
+    // this is also essential because the error propagation can only use 'once',
+    // which may leave consequent errors unhandled and thus crash the app.
     self.on('error', self.logger.error);
-    // 'error' event may be triggered by user generated content (e.g. user's bad
-    // code) and we need to decide how to handle that.
-    // The other problem with the event is that it may be triggred, but also
-    // might not.
-    var onerror = Q.ninvoke(self, 'on', 'error');
+    function errorHandler(err) {
+        if (err) {
+            if (!errorHandler.storedError) {
+                errorHandler.storedError = err;
+            }
+        } else {
+            return function() {
+                if (errorHandler.storedError) {
+                    return Q.reject(errorHandler.storedError)
+                }
+            }
+        }
+    }
+    var onerror = Q.ninvoke(self, 'once', 'error').fail(errorHandler);
     return Q.nfcall(async.eachSeries, this.rules, function iterator(rule, done) {
             try {
                 rule.call(self, self.folder, self.context);
@@ -47,7 +58,7 @@ runner.prototype.start = function(){
             } catch (e) {
                 done(e)
             }
-        }).thenResolve([self.dockerfiles, self.stack, self.gruntfiles, self.packageJson]);
+        }).then(errorHandler()).thenResolve([self.dockerfiles, self.stack, self.gruntfiles, self.packageJson]);
 };
 
 var parsePackage = function(data){

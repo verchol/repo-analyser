@@ -181,11 +181,13 @@ describe ('repo analyzer', function(){
 
         var r = new Runner(localDir);
         r.addRule(function(folder, context) {
-            r.emit('error', 'test error');
+            r.emit('error', new Error('tested error'));
+            r.emit('error', new Error('second error'));
+            r.emit('error', new Error('third error'));
         });
         var p = r.start();
         p.done(undefined, function (err) {
-            assert.equal(err, 'test error');
+            assert.equal(err.message, 'tested error');
             done();
         });
     });
