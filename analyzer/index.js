@@ -11,7 +11,7 @@ var filewalker   =   require('filewalker');
 
 var runner = function (folder){
     EventEmitter.call(this);
-    if(!fs.existsSync(folder)) console.warn('folder does not exists');
+    if(!fs.existsSync(folder)) this.logger.warn('folder does not exists');
     this.rules = [];
     this.folder = folder;
     this.stack = [];
@@ -23,6 +23,7 @@ var runner = function (folder){
 };
 
 util.inherits(runner, EventEmitter);
+runner.prototype.logger = console;
 runner.prototype.addRule = function(rule)
 {
     this.rules.push(rule);
@@ -33,6 +34,7 @@ runner.prototype.start = function(){
     var self = this;
     //this.handle = defer;
 
+    self.on('error', self.logger.error);
     // 'error' event may be triggered by user generated content (e.g. user's bad
     // code) and we need to decide how to handle that.
     // The other problem with the event is that it may be triggred, but also
@@ -70,7 +72,7 @@ function metaData(folder, output){
     var emitter = this;
     filewalker(folder)
     .on('dir', function(p) {
-        //console.log('dir:  %s', p);
+        //emitter.logger.trace('dir:  %s', p);
     })
     .on('file', function(p, s) {
         var data = path.parse(p);
@@ -89,11 +91,11 @@ function metaData(folder, output){
         }
 
         if (data.base.toLowerCase().indexOf("gruntfile") !== -1){
-            console.log('gruntfile was detected:' + p);
+            emitter.logger.info('gruntfile was detected:' + p);
             emitter.gruntfiles.push(p);
             return emitter.emit('gruntfile', p);
         }
-        //  console.log('file: %s, %d bytes', data.base, s.size);
+        //  emitter.logger.trace('file: %s, %d bytes', data.base, s.size);
         var ext = data.ext.slice(- (data.ext.length - 1));
         if (_.indexOf(emitter.stack, ext) === -1 && _.indexOf(emitter.supported, ext)!== -1){
             emitter.stack.push(ext);
@@ -101,7 +103,6 @@ function metaData(folder, output){
         }
 
     }).on('error', function(err) {
-        console.error(err);
         emitter.emit('error', err);
     })
     .on('done', function() {

@@ -66,6 +66,11 @@ describe ('repo analyzer', function(){
             done(err);
         });*/
     });
+    beforeEach(function(done){
+        var devnull = fs.createWriteStream('/dev/null');
+        Runner.prototype.logger = new console.Console(devnull, devnull);
+        done();
+    });
 
     it('run on multiple repos' , function(done){
         var promises = [];
