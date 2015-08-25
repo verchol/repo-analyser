@@ -52,12 +52,7 @@ runner.prototype.start = function(){
     }
     var onerror = Q.ninvoke(self, 'once', 'error').fail(errorHandler);
     return Q.nfcall(async.eachSeries, this.rules, function iterator(rule, done) {
-            try {
-                rule.call(self, self.folder, self.context);
-                done();
-            } catch (e) {
-                done(e)
-            }
+            Q(rule.call(self, self.folder, self.context)).thenResolve(null).then(done).fail(done);
         }).then(errorHandler()).thenResolve([self.dockerfiles, self.stack, self.gruntfiles, self.packageJson]);
 };
 

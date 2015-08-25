@@ -191,5 +191,20 @@ describe ('repo analyzer', function(){
             done();
         });
     });
+    it('allows to return promise from a rule', function(done) {
+        var localDir = getRepoDirByKey('express');
 
+        var r = new Runner(localDir);
+        var indicator = [false];
+        r.addRule(function(folder, context) {
+            return Q('promised').delay(200).then(function() {
+                indicator[0] = true;
+            });
+        });
+        var p = r.start();
+        p.done(function () {
+            assert(indicator[0]);
+            done();
+        });
+    });
 });
