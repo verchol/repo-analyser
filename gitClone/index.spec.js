@@ -77,7 +77,7 @@ describe ('repo analyzer', function(){
         assert(Runner);
         _.forEach(repos, function(repo, key){
             var r = new Runner(getRepoDirByKey(key));
-            var p = r.start();
+            var p = r.start().donepromise;
             promises.push(p);
         });
 
@@ -89,66 +89,74 @@ describe ('repo analyzer', function(){
         var localDir = getRepoDirByKey('docker');
 
         var r = new Runner(localDir);
-        var p = r.start();
-        r.done(function () {
-            assert.notStrictEqual(_.indexOf(r.dockerfiles, 'awscli/Dockerfile'), -1)
-            assert.notStrictEqual(_.indexOf(r.dockerfiles, 'mesos/Dockerfile'), -1)
+        r.on('dockerfiles', function(data){
+            var item = _.last(r.rules_data.dockerfiles);
+            if ('awscli/Dockerfile' in item) {
+                assert.deepEqual(data, item);
+                assert.equal(data['awscli/Dockerfile'].dir, 'awscli');
+            }
+
+            item = _.last(r.rules_data.dockerfiles);
+            if ('mesos/Dockerfile' in item) {
+                assert.deepEqual(data, item);
+                assert.equal(data['mesos/Dockerfile'].dir, 'mesos');
+            }
+        })
+        .start()
+        .donepromise.done(function (data) {
+            assert(_.some(data.dockerfiles, 'awscli/Dockerfile'));
+            assert(_.some(data.dockerfiles, 'mesos/Dockerfile'));
             done();
-        });
-
-        r.on('docker', function(data){
-            var index = _.indexOf(r.dockerfiles, 'awscli/Dockerfile');
-            if (index != -1 && index == r.dockerfiles.length-1) {
-                assert.equal(data.dir, 'awscli');
-            }
-
-            index = _.indexOf(r.dockerfiles, 'mesos/Dockerfile');
-            if (index != -1 && index == r.dockerfiles.length-1) {
-                assert.equal(data.dir, 'mesos');
-            }
         });
     });
     it('finds package.json [express sample]', function(done){
         var localDir = getRepoDirByKey('express');
 
         var r = new Runner(localDir);
-        var p = r.start();
-        r.done(function () {
-            assert.notStrictEqual(_.indexOf(r.packageJson, 'package.json'), -1)
-        });
-
-        r.on('packageJson', function(data){
-            index = _.indexOf(r.packageJson, 'package.json');
-            if (index != -1 && index == r.packageJson.length-1) {
-                assert.equal(data.scripts.start, 'node app.js');
-                done()
+        r.on('packagesJson', function(data){
+            var item = _.last(r.rules_data.packagesJson);
+            if ('package.json' in item){
+                assert.deepEqual(data, item);
+                assert.equal(item['package.json'].scripts.start, 'node app.js');
             }
+        })
+        .start()
+        .donepromise.done(function (data) {
+            assert(_.some(data.packagesJson, 'package.json'));
+            done()
         });
     });
-    it('finds package.json [socketio sample]', function(done){
+    it.skip('finds package.json [socketio sample]', function(done){
         var localDir = getRepoDirByKey('socketio');
 
         var r = new Runner(localDir);
-        var p = r.start();
-        r.done(function () {
-            assert.notStrictEqual(_.indexOf(r.packageJson, 'package.json'), -1)
-            done();
-        });
-
-        r.on('packageJson', function(data){
-            index = _.indexOf(r.packageJson, 'package.json');
-            if (index != -1 && index == r.packageJson.length-1) {
-                assert.equal(data.scripts.start, 'node app.js');
+        r.on('packagesJson', function(data){
+            var item = _.last(r.rules_data.packagesJson);
+            if ('package.json' in item){
+                assert.deepEqual(data, item);
+                assert.equal(item['package.json'].scripts.start, 'node app.js');
             }
-        });
+        })
+        .start()
+        .donepromise.done(function (data) {
+            assert(_.some(data.packagesJson, 'package.json'));
+            done()
+        })
     });
     it('finds stack js', function(done) {
         var localDir = getRepoDirByKey('express');
 
         var r = new Runner(localDir);
-        var p = r.start();
-        r.done(function () {
-            assert.notStrictEqual(_.indexOf(r.stack, 'js'), -1)
+        r.start()
+        .on('stacks', function(data) {
+            var item = _.last(r.rules_data.stacks);
+            if ('js' == item){
+                assert.equal(data, 'js');
+            }
+        })
+        .donepromise.done(function (data) {
+            assert.notStrictEqual(_.indexOf(data.stacks, 'js'), -1);
+            assert.deepEqual(data.stacks, r.rules_data.stacks);
             done();
         });
     });
@@ -156,37 +164,73 @@ describe ('repo analyzer', function(){
         var localDir = getRepoDirByKey('php');
 
         var r = new Runner(localDir);
-        var p = r.start();
-        r.done(function () {
-            assert.notStrictEqual(_.indexOf(r.stack, 'php'), -1)
+        r.start()
+        .on('stacks', function(data) {
+            var item = _.last(r.rules_data.stacks);
+            if ('php' == item){
+                assert.equal(data, 'php');
+            }
+        })
+        .donepromise.done(function (data) {
+            assert.notStrictEqual(_.indexOf(data.stacks, 'php'), -1);
+            assert.deepEqual(data.stacks, r.rules_data.stacks);
             done();
-        });
+        })
     });
-    it('handles an exception in a rule', function(done) {
+    it('handles an exception in a rule[promise]', function(done) {
         var localDir = getRepoDirByKey('express');
 
         var r = new Runner(localDir);
-        r.addRule(function(folder, context) {
+        r.addRule('test', function (context, filepath, filedata, filestats) {
             throw new Error('test error');
-        });
-        var p = r.start();
-        p.done(undefined, function (err) {
+        })
+        .start()
+        .donepromise.done(undefined, function (err) {
             assert(err instanceof Error);
             assert.equal(err.message, 'test error');
             done();
         });
     });
-    it('handles an "error" event in a rule', function(done) {
+    it('handles an exception in a rule[event]', function(done) {
         var localDir = getRepoDirByKey('express');
 
         var r = new Runner(localDir);
-        r.addRule(function(folder, context) {
+        r.addRule('test', function (context, filepath, filedata, filestats) {
+            throw new Error('test error');
+        })
+        .start()
+        .once('error', function (err) {
+            assert(err instanceof Error);
+            assert.equal(err.message, 'test error');
+            done();
+        });
+    });
+    it('handles an "error" event in a rule[promise]', function(done) {
+        var localDir = getRepoDirByKey('express');
+
+        var r = new Runner(localDir);
+        r.addRule('test', function (context, filepath, filedata, filestats) {
             r.emit('error', new Error('tested error'));
             r.emit('error', new Error('second error'));
             r.emit('error', new Error('third error'));
+        })
+        .start()
+        .donepromise.done(undefined, function (err) {
+            assert.equal(err.message, 'tested error');
+            done();
         });
-        var p = r.start();
-        p.done(undefined, function (err) {
+    });
+    it('handles an "error" event in a rule[event]', function(done) {
+        var localDir = getRepoDirByKey('express');
+
+        var r = new Runner(localDir);
+        r.addRule('test', function (context, filepath, filedata, filestats) {
+            r.emit('error', new Error('tested error'));
+            r.emit('error', new Error('second error'));
+            r.emit('error', new Error('third error'));
+        })
+        .start()
+        .once('error', function (err) {
             assert.equal(err.message, 'tested error');
             done();
         });
@@ -196,15 +240,18 @@ describe ('repo analyzer', function(){
 
         var r = new Runner(localDir);
         var indicator = [false];
-        r.addRule(function(folder, context) {
+        r.addRule('test', function (context, filepath, filedata, filestats) {
             return Q('promised').delay(200).then(function() {
                 indicator[0] = true;
             });
-        });
-        var p = r.start();
-        p.done(function () {
+        })
+        .start()
+        .donepromise.done(function () {
             assert(indicator[0]);
             done();
         });
     });
+    it('logs error events in logger');
+    it ('#addRule rejects an existing rule name');
+    it ('#addRule validates parametes');
 });
