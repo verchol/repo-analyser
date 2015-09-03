@@ -14,7 +14,6 @@ describe ('repo analyzer', function(){
         "php": ["github.com", "zwij/wap_zaverecna.git"],
         "docker": ["github.com", "yaronr/dockerfile.git"],
         6: ["github.com", "codefresh-io/spigo.git"],
-        "node": ["github.com", "codefresh-io/codefresh-io.git"]
     };
     var testFolder = process.env.TEST_FOLDER || './test/repo';
     Q.longStackSupport = true;
